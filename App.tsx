@@ -9,8 +9,11 @@ import {
     PlanData, Campaign, User, UserProfileModalProps
 } from './types';
 import { 
-    LanguageProvider, useLanguage, ThemeProvider, useTheme, AuthProvider, useAuth
+    LanguageProvider, useLanguage, ThemeProvider, useTheme
 } from './contexts';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { usePlans } from './hooks/usePlans';
+import { useSubscription } from './hooks/useSubscription';
 import { 
     LoginPage, PlanSelectorPage as PlanSelectorPageComponent, OnboardingPage, DashboardPage, MonthlyPlanPage, UTMBuilderPage, KeywordBuilderPage, CreativeBuilderPage,
     PlanDetailsModal, RenamePlanModal,
@@ -21,8 +24,10 @@ import {
     ShareLinkModal,
     ShareablePlanViewer,
     LOGO_DARK,
-    ICON_LOGO
+    ICON_LOGO,
+    SubscriptionManager
 } from './components';
+import { AuthCallback } from './pages/AuthCallback';
 
 
 // --- Layout Components ---
@@ -324,8 +329,9 @@ const UserProfileModalInternal: React.FC<UserProfileModalProps> = ({ isOpen, onC
 function AppLogic() {
     const { user, loading, signOut } = useAuth();
     const { t, language } = useLanguage();
+    const { plans: allPlans, isLoading: plansLoading, savePlan, deletePlan: deletePlanFromSupabase } = usePlans();
+    const { currentPlan: subscriptionPlan, canCreatePlan, canCreateSharedLink } = useSubscription();
 
-    const [allPlans, setAllPlans] = useState<PlanData[]>([]);
     const [activePlan, setActivePlan] = useState<PlanData | null>(null);
     const [activeView, setActiveView] = useState('Overview');
     
@@ -341,12 +347,11 @@ function AppLogic() {
     const [isExporting, setIsExporting] = useState(false);
     const [shareLink, setShareLink] = useState('');
     const [isShareLinkModalOpen, setIsShareLinkModalOpen] = useState(false);
+    const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
 
+    // Reset active plan when user changes
     useEffect(() => {
-        if (user) {
-            setAllPlans(dbService.getPlans(user.uid));
-        } else {
-            setAllPlans([]);
+        if (!user) {
             setActivePlan(null);
         }
     }, [user]);
@@ -355,26 +360,37 @@ function AppLogic() {
         localStorage.setItem('sidebarCollapsed', String(isSidebarCollapsed));
     }, [isSidebarCollapsed]);
 
-    const handlePlanCreated = (type: 'ai' | 'blank' | 'template') => {
+    const handlePlanCreated = async (type: 'ai' | 'blank' | 'template') => {
         if (!user) return;
+        
+        // Check subscription limits
+        if (!canCreatePlan(allPlans.length)) {
+            alert(`Você atingiu o limite de ${subscriptionPlan.maxPlans} planos do seu plano ${subscriptionPlan.name}. Faça upgrade para criar mais planos.`);
+            setIsSubscriptionModalOpen(true);
+            return;
+        }
         if (type === 'ai') {
             setAIPlanCreationModalOpen(true);
             return;
         }
         const newPlan = type === 'blank' ? createNewEmptyPlan(user.uid) : createNewPlanFromTemplate(user.uid);
-        setAllPlans(prev => [...prev, newPlan]);
-        setActivePlan(newPlan);
-        setActiveView('Overview');
+        try {
+            await savePlan(newPlan);
+            setActivePlan(newPlan);
+            setActiveView('Overview');
+        } catch (error) {
+            console.error('Error saving new plan:', error);
+            alert(t('Erro ao salvar plano'));
+        }
     };
 
     const handlePlanCreatedOrSelected = (newPlanOrType: PlanData | 'ai' | 'blank' | 'template') => {
         if (typeof newPlanOrType === 'string') {
             handlePlanCreated(newPlanOrType);
         } else {
-            setAllPlans(prev => {
-                if(prev.find(p => p.id === newPlanOrType.id)) return prev;
-                return [...prev, newPlanOrType];
-            });
+            // Plan is already handled by the usePlans hook
+            setActivePlan(newPlanOrType);
+            setActiveView('Overview');
         }
     }
 
@@ -402,8 +418,7 @@ function AppLogic() {
                 aiPrompt: prompt,
                 aiImagePrompt: partialPlan.aiImagePrompt,
             };
-            dbService.savePlan(user.uid, newPlan);
-            setAllPlans(prev => [...prev, newPlan]);
+            await savePlan(newPlan);
             setActivePlan(newPlan);
             setActiveView('Overview');
         } catch (error) {
@@ -424,17 +439,28 @@ function AppLogic() {
         setActivePlan(null);
     };
 
-    const handleDeletePlan = (planId: string) => {
+    const handleDeletePlan = async (planId: string) => {
         if (!user) return;
-        dbService.deletePlan(user.uid, planId);
-        setAllPlans(allPlans.filter(p => p.id !== planId));
+        try {
+            await deletePlanFromSupabase(planId);
+            if (activePlan?.id === planId) {
+                setActivePlan(null);
+            }
+        } catch (error) {
+            console.error('Error deleting plan:', error);
+            alert(t('Erro ao deletar plano'));
+        }
     };
 
-    const updateActivePlan = (updatedPlan: PlanData) => {
+    const updateActivePlan = async (updatedPlan: PlanData) => {
         if (!user) return;
-        setActivePlan(updatedPlan);
-        setAllPlans(allPlans.map(p => p.id === updatedPlan.id ? updatedPlan : p));
-        dbService.savePlan(user.uid, updatedPlan);
+        try {
+            await savePlan(updatedPlan);
+            setActivePlan(updatedPlan);
+        } catch (error) {
+            console.error('Error updating plan:', error);
+            alert(t('Erro ao atualizar plano'));
+        }
     };
     
     const handleSavePlanDetails = (details: Partial<PlanData>) => {
@@ -448,31 +474,38 @@ function AppLogic() {
         setRenameModalOpen(true);
     };
     
-    const handleRenamePlan = (planId: string, newName: string) => {
+    const handleRenamePlan = async (planId: string, newName: string) => {
         if(!user) return;
         const planToUpdate = allPlans.find(p => p.id === planId);
         if(planToUpdate) {
             const updatedPlan = {...planToUpdate, campaignName: newName};
-            const updatedPlans = allPlans.map(p => p.id === planId ? updatedPlan : p);
-            setAllPlans(updatedPlans);
-            dbService.savePlan(user.uid, updatedPlan);
-            if(activePlan?.id === planId) {
-                setActivePlan(updatedPlan);
+            try {
+                await savePlan(updatedPlan);
+                if(activePlan?.id === planId) {
+                    setActivePlan(updatedPlan);
+                }
+            } catch (error) {
+                console.error('Error renaming plan:', error);
+                alert(t('Erro ao renomear plano'));
             }
         }
         setRenameModalOpen(false);
         setPlanToRename(null);
     }
     
-    const handleDuplicatePlan = (planToDuplicate: PlanData) => {
+    const handleDuplicatePlan = async (planToDuplicate: PlanData) => {
         if(!user) return;
         const newPlan: PlanData = {
             ...JSON.parse(JSON.stringify(planToDuplicate)),
             id: `plan_${new Date().getTime()}`,
             campaignName: `${planToDuplicate.campaignName} ${t('Copy')}`
         };
-        dbService.savePlan(user.uid, newPlan);
-        setAllPlans(prev => [...prev, newPlan]);
+        try {
+            await savePlan(newPlan);
+        } catch (error) {
+            console.error('Error duplicating plan:', error);
+            alert(t('Erro ao duplicar plano'));
+        }
     }
 
     const handleSaveCampaign = (month: string, campaign: Campaign) => {
@@ -490,29 +523,44 @@ function AppLogic() {
         updateActivePlan({ ...activePlan, months: updatedMonths });
     };
     
-    const handleDeleteCampaign = (month: string, campaignId: string) => {
+    const handleDeleteCampaign = async (month: string, campaignId: string) => {
         if (!activePlan) return;
         const updatedMonths = { ...(activePlan.months || {}) };
         if (updatedMonths[month]) {
             updatedMonths[month] = updatedMonths[month].filter(c => c && c.id !== campaignId);
         }
-        updateActivePlan({ ...activePlan, months: updatedMonths });
+        try {
+            await updateActivePlan({ ...activePlan, months: updatedMonths });
+        } catch (error) {
+            console.error('Error deleting campaign:', error);
+            alert(t('Erro ao deletar campanha'));
+        }
     }
 
-    const handleAddMonth = (month: string) => {
+    const handleAddMonth = async (month: string) => {
         if (!activePlan || !month) return;
         if (!activePlan.months) activePlan.months = {};
         if (activePlan.months[month]) return;
         
         const updatedMonths = { ...activePlan.months, [month]: [] };
-        updateActivePlan({ ...activePlan, months: updatedMonths });
-        setAddMonthModalOpen(false);
+        try {
+            await updateActivePlan({ ...activePlan, months: updatedMonths });
+            setAddMonthModalOpen(false);
+        } catch (error) {
+            console.error('Error adding month:', error);
+            alert(t('Erro ao adicionar mês'));
+        }
     };
     
-    const handleAddFormat = (format: string) => {
+    const handleAddFormat = async (format: string) => {
         if (!activePlan) return;
         const updatedFormats = [...new Set([...(activePlan.customFormats || []), format])];
-        updateActivePlan({...activePlan, customFormats: updatedFormats});
+        try {
+            await updateActivePlan({...activePlan, customFormats: updatedFormats});
+        } catch (error) {
+            console.error('Error adding format:', error);
+            alert(t('Erro ao adicionar formato'));
+        }
     };
     
     const handleRegeneratePlan = async (prompt: string) => {
@@ -535,7 +583,7 @@ function AppLogic() {
                 aiPrompt: prompt,
                 aiImagePrompt: partialPlan.aiImagePrompt || activePlan.aiImagePrompt,
              };
-             updateActivePlan(updatedPlan);
+             await updateActivePlan(updatedPlan);
         } catch (error) {
             console.error("Error regenerating AI plan:", error);
             alert(t('Erro ao criar o plano com IA. Por favor, tente novamente.'));
@@ -555,6 +603,13 @@ function AppLogic() {
         if (!activePlan) {
             setShareLink(t('link_generation_error'));
             setIsShareLinkModalOpen(true);
+            return;
+        }
+        
+        // Check subscription limits for shared links
+        if (!canCreateSharedLink(0)) {
+            alert(`Compartilhamento de links não está disponível no seu plano ${subscriptionPlan.name}. Faça upgrade para compartilhar planos.`);
+            setIsSubscriptionModalOpen(true);
             return;
         }
 
@@ -601,6 +656,11 @@ function AppLogic() {
 
     if (loading) {
         return <div className="h-screen w-full flex items-center justify-center bg-gray-900"><LoaderIcon className="animate-spin text-blue-600" size={48} /></div>;
+    }
+    
+    // Verificar se estamos na página de callback OAuth
+    if (window.location.pathname === '/auth/callback') {
+        return <AuthCallback />;
     }
     
     const urlParams = new URLSearchParams(window.location.search);
@@ -731,6 +791,7 @@ function AppLogic() {
              />
              <UserProfileModalInternal isOpen={isProfileModalOpen} onClose={() => setIsProfileModalOpen(false)} />
              <ShareLinkModal isOpen={isShareLinkModalOpen} onClose={() => setIsShareLinkModalOpen(false)} link={shareLink} />
+             <SubscriptionManager isOpen={isSubscriptionModalOpen} onClose={() => setIsSubscriptionModalOpen(false)} />
         </div>
     );
 }

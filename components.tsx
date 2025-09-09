@@ -3,7 +3,9 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { ChevronDown, PlusCircle, Trash2, Edit, Save, X, Menu, FileDown, Settings, Sparkles, Loader as LoaderIcon, Copy as CopyIcon, Check, Upload, Link2, LayoutDashboard, List, PencilRuler, FileText, Sheet, LogOut, Wand2, FilePlus2, ArrowLeft, MoreVertical, User as UserIcon, LucideProps, AlertTriangle, KeyRound, Tags, Tag, ImageIcon, ExternalLink, HelpCircle } from 'lucide-react';
-import { useLanguage, useTheme, useAuth } from './contexts';
+import { useLanguage, useTheme } from './contexts';
+import { useAuth } from './contexts/AuthContext';
+import { AuthModal } from './components/auth/AuthModal';
 import { callGeminiAPI, formatCurrency, formatPercentage, formatNumber, recalculateCampaignMetrics, calculateKPIs, dbService, sortMonthKeys, generateAIKeywords, generateAIImages, exportCreativesAsCSV, exportCreativesAsTXT, exportUTMLinksAsCSV, exportUTMLinksAsTXT, exportGroupedKeywordsAsCSV, exportGroupedKeywordsAsTXT, exportGroupedKeywordsToPDF, calculatePlanSummary } from './services';
 import { TRANSLATIONS, OPTIONS, COLORS, MONTHS_LIST, CHANNEL_FORMATS, DEFAULT_METRICS_BY_OBJECTIVE } from './constants';
 import {
@@ -554,7 +556,7 @@ export const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({ isOpen, 
                     ) : (
                         suggestions && Object.keys(suggestions).length > 0 ? (
                              <div className="space-y-6">
-                                {Object.entries(suggestions).map(([type, texts]) => (
+                                {Object.entries(suggestions).map(([type, texts]: [string, string[]]) => (
                                     <div key={type}>
                                         <div className="flex justify-between items-center mb-2">
                                             <h3 className="text-lg font-semibold capitalize text-gray-100">{t(type)}</h3>
@@ -612,8 +614,8 @@ export const AISuggestionsModal: React.FC<AISuggestionsModalProps> = ({ isOpen, 
 
 // --- Page-Specific Components ---
 export const LoginPage: React.FC = () => {
-    const { signInWithGoogle } = useAuth();
     const { t } = useLanguage();
+    const [isAuthModalOpen, setIsAuthModalOpen] = useState(true);
 
     return (
         <div className="h-screen w-full flex items-center justify-center bg-gray-900 p-4">
@@ -626,7 +628,7 @@ export const LoginPage: React.FC = () => {
                 <h1 className="text-3xl font-bold text-gray-100">{t('Planeamento de Mídia Inteligente')}</h1>
                 <p className="mt-2 mb-8 text-gray-400">{t('Ferramenta de IA para Marketing.')}</p>
                 <button 
-                    onClick={signInWithGoogle}
+                    onClick={() => setIsAuthModalOpen(true)}
                     className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-lg shadow-md transition-all duration-300"
                 >
                     <svg className="w-6 h-6" viewBox="0 0 48 48">
@@ -638,6 +640,13 @@ export const LoginPage: React.FC = () => {
                     {t('Entrar com Google')}
                 </button>
             </Card>
+            
+            {/* Auth Modal */}
+            <AuthModal 
+                isOpen={isAuthModalOpen} 
+                onClose={() => setIsAuthModalOpen(false)}
+                initialMode="login"
+            />
         </div>
     );
 };
@@ -2644,3 +2653,6 @@ export const ShareablePlanViewer: React.FC<{ encodedPlanData: string }> = ({ enc
         </div>
     );
 };
+
+// Export SubscriptionManager from the subscription folder
+export { SubscriptionManager } from './components/subscription/SubscriptionManager';

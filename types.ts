@@ -1,5 +1,6 @@
 
 
+import React from 'react';
 import { GoogleGenAI } from '@google/genai';
 
 // DATA MODELS
