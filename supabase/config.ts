@@ -90,11 +90,8 @@ export const authService = {
 
   // Login com Google
   async signInWithGoogle() {
-    // Determinar a URL de redirecionamento baseada no ambiente
-    const isProduction = window.location.hostname !== 'localhost'
-    const redirectTo = isProduction 
-      ? 'https://traesaas-masterplan1t5t-32t9ptm1d.vercel.app/auth/callback'
-      : `${window.location.origin}/auth/callback`
+    // Usar sempre a URL atual do ambiente para redirecionamento
+    const redirectTo = `${window.location.origin}/auth/callback`
     
     console.log('AuthService: Iniciando login com Google, redirectTo:', redirectTo)
     
