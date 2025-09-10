@@ -96,19 +96,28 @@ export const authService = {
       ? 'https://traesaas-masterplan1t5t-32t9ptm1d.vercel.app/auth/callback'
       : `${window.location.origin}/auth/callback`
     
+    console.log('AuthService: Iniciando login com Google, redirectTo:', redirectTo)
+    
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo
       }
     })
+    
+    console.log('AuthService: Resultado do login Google:', { data, error })
     return { data, error }
   },
 
   // Logout
   async signOut() {
-    const { error } = await supabase.auth.signOut()
-    return { error }
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'local' })
+      return { error }
+    } catch (error) {
+      console.error('Erro durante signOut:', error)
+      return { error }
+    }
   },
 
   // Salvar plano do usuário
@@ -197,7 +206,10 @@ export const authService = {
 
   // Escutar mudanças de autenticação
   onAuthStateChange(callback: (event: string, session: any) => void) {
-    return supabase.auth.onAuthStateChange(callback)
+    return supabase.auth.onAuthStateChange((event, session) => {
+      console.log('AuthService: Mudança de estado de autenticação:', { event, session: session ? 'presente' : 'ausente' })
+      callback(event, session)
+    })
   }
 }
 

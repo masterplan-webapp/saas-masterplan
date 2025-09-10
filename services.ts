@@ -3,6 +3,7 @@
 import { GoogleGenAI, GenerateContentResponse, Type, Modality } from "@google/genai";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { v4 as uuidv4 } from 'uuid';
 import { PlanData, Campaign, User, LanguageCode, KeywordSuggestion, CreativeTextData, AdGroup, UTMLink, GeneratedImage, AspectRatio, SummaryData, MonthlySummary } from './types';
 import { MONTHS_LIST, OPTIONS, CHANNEL_FORMATS, DEFAULT_METRICS_BY_OBJECTIVE } from "./constants";
 
@@ -214,7 +215,7 @@ export const calculatePlanSummary = (planData: PlanData): { summary: SummaryData
 
 export const createNewEmptyPlan = (userId: string): PlanData => {
     const newPlan: PlanData = {
-        id: `plan_${new Date().getTime()}`,
+        id: uuidv4(),
         campaignName: 'Novo Plano em Branco',
         objective: '',
         targetAudience: '',
@@ -238,7 +239,7 @@ export const createNewPlanFromTemplate = (userId: string): PlanData => {
     const conversionDefaults = DEFAULT_METRICS_BY_OBJECTIVE['Conversão'];
 
     const newPlan: PlanData = {
-        id: `plan_${new Date().getTime()}`,
+        id: uuidv4(),
         campaignName: 'Plano de Lançamento (Modelo)',
         objective: 'Lançar novo produto de skincare e gerar 100 vendas iniciais.',
         targetAudience: 'Mulheres de 25-45 anos interessadas em beleza, bem-estar e produtos sustentáveis.',

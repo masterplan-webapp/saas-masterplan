@@ -11,12 +11,14 @@
   "dependencies": {
     "@google/genai": "^1.6.0",
     "@supabase/supabase-js": "^2.57.2",
+    "@types/uuid": "^10.0.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.1",
     "lucide-react": "^0.523.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "recharts": "^2.12.7"
+    "recharts": "^2.12.7",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

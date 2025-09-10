@@ -723,7 +723,7 @@ export const PlanSelectorPage: React.FC<PlanSelectorPageProps> = ({ plans, onSel
     const handleDuplicate = (planToDuplicate: PlanData) => {
         const newPlan: PlanData = {
             ...JSON.parse(JSON.stringify(planToDuplicate)), // Deep copy
-            id: `plan_${new Date().getTime()}`,
+            id: crypto.randomUUID(),
             campaignName: `${planToDuplicate.campaignName} ${t('Copy')}`,
         };
         onPlanCreated(newPlan);

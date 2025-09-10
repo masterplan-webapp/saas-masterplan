@@ -400,7 +400,7 @@ function AppLogic() {
         try {
             const partialPlan = await generateAIPlan(prompt, language);
             const newPlan: PlanData = {
-                id: `plan_${new Date().getTime()}`,
+                id: crypto.randomUUID(),
                 campaignName: partialPlan.campaignName || 'Novo Plano (IA)',
                 objective: partialPlan.objective || '',
                 targetAudience: partialPlan.targetAudience || '',
@@ -441,14 +441,38 @@ function AppLogic() {
 
     const handleDeletePlan = async (planId: string) => {
         if (!user) return;
+        
+        // Show confirmation dialog
+        if (!window.confirm(t('Confirm Delete This Plan'))) {
+            return;
+        }
+        
         try {
             await deletePlanFromSupabase(planId);
             if (activePlan?.id === planId) {
                 setActivePlan(null);
             }
-        } catch (error) {
+            // Show success message
+            console.log('Plan deleted successfully');
+        } catch (error: any) {
             console.error('Error deleting plan:', error);
-            alert(t('Erro ao deletar plano'));
+            
+            // Provide specific error messages based on error type
+            let errorMessage = t('Erro ao deletar plano');
+            
+            if (error.message?.includes('não encontrado')) {
+                errorMessage = t('Plano não encontrado');
+            } else if (error.message?.includes('Permissão negada')) {
+                errorMessage = t('Você não tem permissão para deletar este plano');
+            } else if (error.message?.includes('conexão') || error.message?.includes('network')) {
+                errorMessage = t('Erro de conexão. Tente novamente.');
+            } else if (error.message?.includes('ID do plano inválido')) {
+                errorMessage = t('ID do plano inválido');
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            alert(errorMessage);
         }
     };
 
@@ -497,7 +521,7 @@ function AppLogic() {
         if(!user) return;
         const newPlan: PlanData = {
             ...JSON.parse(JSON.stringify(planToDuplicate)),
-            id: `plan_${new Date().getTime()}`,
+            id: crypto.randomUUID(),
             campaignName: `${planToDuplicate.campaignName} ${t('Copy')}`
         };
         try {

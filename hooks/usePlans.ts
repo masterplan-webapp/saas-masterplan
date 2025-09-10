@@ -91,26 +91,57 @@ export function usePlans() {
       throw new Error('Usuário não autenticado')
     }
 
+    // Validate planId
+    if (!planId || typeof planId !== 'string') {
+      throw new Error('ID do plano inválido')
+    }
+
+    // Check if plan exists locally
+    const planExists = plans.some(p => p.id === planId)
+    if (!planExists) {
+      throw new Error('Plano não encontrado')
+    }
+
     try {
+      setError(null)
       const { error: deleteError } = await planService.deletePlan(planId)
-      if (deleteError) throw deleteError
       
-      // Update local state
+      if (deleteError) {
+        // Handle specific Supabase errors
+        if (deleteError.code === 'PGRST116') {
+          throw new Error('Plano não encontrado no servidor')
+        } else if (deleteError.code === '42501') {
+          throw new Error('Permissão negada para deletar este plano')
+        } else {
+          throw new Error(`Erro do servidor: ${deleteError.message}`)
+        }
+      }
+      
+      // Update local state only after successful deletion
       setPlans(prev => prev.filter(p => p.id !== planId))
       
       // Also remove from localStorage
       const updatedPlans = plans.filter(p => p.id !== planId)
       localStorage.setItem('masterplan_plans', JSON.stringify(updatedPlans))
       
+      console.log('Plan deleted successfully:', planId)
+      
     } catch (err: any) {
       console.error('Error deleting plan:', err)
+      setError(err.message || 'Erro desconhecido ao deletar plano')
       
-      // Fallback to localStorage
-      const updatedPlans = plans.filter(p => p.id !== planId)
-      localStorage.setItem('masterplan_plans', JSON.stringify(updatedPlans))
-      setPlans(updatedPlans)
+      // Only fallback to localStorage if it's a network/server error
+      if (err.message?.includes('servidor') || err.message?.includes('network') || err.code === 'NETWORK_ERROR') {
+        console.log('Falling back to local deletion due to network error')
+        const updatedPlans = plans.filter(p => p.id !== planId)
+        localStorage.setItem('masterplan_plans', JSON.stringify(updatedPlans))
+        setPlans(updatedPlans)
+        
+        throw new Error('Erro de conexão. Plano removido localmente e será sincronizado quando a conexão for restaurada.')
+      }
       
-      throw new Error('Erro ao deletar plano. Removido localmente.')
+      // Re-throw the original error for other cases
+      throw err
     }
   }
 

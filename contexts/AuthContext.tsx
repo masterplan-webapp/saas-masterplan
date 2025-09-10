@@ -151,12 +151,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Função de logout
   const signOut = async () => {
     setLoading(true)
-    const { error } = await authService.signOut()
-    setUser(null)
-    setSession(null)
-    setSubscription(null)
-    setLoading(false)
-    return { error }
+    try {
+      const { error } = await authService.signOut()
+      if (!error) {
+        setUser(null)
+        setSession(null)
+        setSubscription(null)
+      }
+      setLoading(false)
+      return { error }
+    } catch (error) {
+      console.error('Erro durante logout:', error)
+      setLoading(false)
+      return { error }
+    }
   }
 
   // Função para atualizar perfil
