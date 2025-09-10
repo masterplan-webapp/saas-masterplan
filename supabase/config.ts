@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Configurações do Supabase
-const supabaseUrl = 'https://oibdqytxyeauwbsfuxun.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pYmRxeXR4eWVhdXdic2Z1eHVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNjM3MjQsImV4cCI6MjA3MjczOTcyNH0.iI1hLY1iLb6dY9IwVrYhjNnpBJ5w4FuInvt8qDizA_U'
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://oibdqytxyeauwbsfuxun.supabase.co'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pYmRxeXR4eWVhdXdic2Z1eHVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNjM3MjQsImV4cCI6MjA3MjczOTcyNH0.iI1hLY1iLb6dY9IwVrYhjNnpBJ5w4FuInvt8qDizA_U'
 
 // Criar cliente Supabase
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -90,10 +90,16 @@ export const authService = {
 
   // Login com Google
   async signInWithGoogle() {
+    // Determinar a URL de redirecionamento baseada no ambiente
+    const isProduction = window.location.hostname !== 'localhost'
+    const redirectTo = isProduction 
+      ? 'https://traesaas-masterplan1t5t-32t9ptm1d.vercel.app/auth/callback'
+      : `${window.location.origin}/auth/callback`
+    
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`
+        redirectTo
       }
     })
     return { data, error }
