@@ -1,33 +1,54 @@
--- Configurações OAuth para corrigir redirecionamento em produção
--- Este arquivo documenta as configurações necessárias no dashboard do Supabase
+-- Correção definitiva para redirecionamento OAuth em produção
+-- Data: 2025-01-16
+-- Objetivo: Garantir que o OAuth redirecione corretamente para a URL da Vercel
 
--- CONFIGURAÇÕES OBRIGATÓRIAS NO DASHBOARD DO SUPABASE:
--- Acesse: https://supabase.com/dashboard/project/oibdqytxyeauwbsfuxun/auth/providers
+-- IMPORTANTE: Este arquivo documenta as configurações que devem ser aplicadas
+-- manualmente no dashboard do Supabase em Authentication > URL Configuration
 
--- 1. Authentication > Providers > Google OAuth
--- 2. Site URL (URL principal do site):
---    https://traesaas-masterplan1t5t-fabio-zacaris-projects-2521886a.vercel.app
+/*
+CONFIGURAÇÕES OBRIGATÓRIAS NO DASHBOARD SUPABASE:
 
--- 3. Redirect URLs (URLs permitidas para redirecionamento após login):
---    https://traesaas-masterplan1t5t-fabio-zacaris-projects-2521886a.vercel.app/auth/callback
---    http://localhost:3001/auth/callback
---    http://localhost:3000/auth/callback
+1. Site URL:
+   https://traesaas-masterplan1t5t-fabio-zacaris-projects-2521886a.vercel.app
 
--- IMPORTANTE: 
--- - Remover qualquer referência a localhost nas configurações de produção
--- - Garantir que a URL da Vercel seja a principal
--- - Verificar se o Google OAuth está habilitado
+2. Redirect URLs (adicionar TODAS as seguintes):
+   https://traesaas-masterplan1t5t-fabio-zacaris-projects-2521886a.vercel.app/auth/callback
+   https://traesaas-masterplan1t5t-fabio-zacaris-projects-2521886a.vercel.app/**
+   http://localhost:3000/auth/callback
+   http://localhost:3001/auth/callback
 
--- VERIFICAÇÃO DAS CONFIGURAÇÕES ATUAIS:
+3. Verificar se NÃO há configurações antigas com:
+   - http://localhost:3000 (sem /auth/callback)
+   - URLs incorretas ou desatualizadas
+
+PASSOS PARA APLICAR:
+1. Acesse o dashboard do Supabase
+2. Vá em Authentication > URL Configuration
+3. Configure Site URL com a URL da Vercel
+4. Adicione todas as Redirect URLs listadas acima
+5. Remova qualquer URL incorreta ou desatualizada
+6. Salve as configurações
+7. Aguarde alguns minutos para propagação
+
+VERIFICAÇÃO:
+- Teste o login com Google na URL de produção
+- Verifique se redireciona para a URL da Vercel
+- Confirme que não há redirecionamento para localhost:3000
+*/
+
+-- Verificar configurações atuais (apenas para referência)
 SELECT 
-    key,
-    value
-FROM auth.config
-WHERE key IN ('SITE_URL', 'EXTERNAL_GOOGLE_REDIRECT_URI', 'EXTERNAL_GOOGLE_ENABLED');
+    'Site URL deve ser: https://traesaas-masterplan1t5t-fabio-zacaris-projects-2521886a.vercel.app' as configuracao_necessaria
+UNION ALL
+SELECT 
+    'Redirect URLs devem incluir: https://traesaas-masterplan1t5t-fabio-zacaris-projects-2521886a.vercel.app/auth/callback' as configuracao_necessaria
+UNION ALL
+SELECT 
+    'Verificar se não há URLs localhost:3000 sem /auth/callback' as configuracao_necessaria;
 
--- LOGS PARA DEBUG:
--- Verificar se há erros de redirecionamento nos logs do Supabase
--- Dashboard > Logs > Auth logs
-
--- NOTA: As configurações OAuth devem ser feitas MANUALMENTE no dashboard
--- Este arquivo serve para documentação e verificação das configurações
+-- Log de aplicação desta correção
+INSERT INTO public.system_logs (message, created_at) 
+VALUES (
+    'Aplicada correção de OAuth para produção Vercel - configurações manuais necessárias no dashboard',
+    NOW()
+) ON CONFLICT DO NOTHING;
