@@ -26,6 +26,18 @@ export function AuthCallback() {
     addDebugLog(`Search params: ${window.location.search}`)
     addDebugLog(`Hash: ${window.location.hash}`)
     
+    // Verificar se estamos em produção e detectar problemas de redirecionamento
+    const isProduction = !window.location.hostname.includes('localhost')
+    const productionUrl = import.meta.env.VITE_PRODUCTION_URL
+    addDebugLog(`Ambiente: ${isProduction ? 'PRODUÇÃO' : 'DESENVOLVIMENTO'}`)
+    addDebugLog(`URL de produção configurada: ${productionUrl || 'NÃO CONFIGURADA'}`)
+    
+    // Verificar se há erro de redirecionamento
+    if (isProduction && window.location.href.includes('localhost')) {
+      addDebugLog('🚨 ERRO: Redirecionamento incorreto para localhost detectado!')
+      setError('Erro de redirecionamento OAuth - localhost em produção')
+    }
+    
     // Limpar timers anteriores
     if (redirectTimer) {
       clearTimeout(redirectTimer)

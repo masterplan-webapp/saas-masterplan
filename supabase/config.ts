@@ -90,46 +90,54 @@ export const authService = {
 
   // Login com Google
   async signInWithGoogle() {
-    // Detectar ambiente de forma mais robusta
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    const isVercel = window.location.hostname.includes('vercel.app')
+    // SOLUÇÃO DEFINITIVA: Detecção robusta de ambiente
+    const hostname = window.location.hostname
     const currentOrigin = window.location.origin
     const productionUrl = import.meta.env.VITE_PRODUCTION_URL
     
-    // SOLUÇÃO DEFINITIVA: Forçar sempre a URL correta baseada no ambiente
+    // Determinar se estamos em desenvolvimento ou produção
+    const isLocalDevelopment = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')
+    const isVercelProduction = hostname.includes('vercel.app')
+    const isCustomDomain = !isLocalDevelopment && !isVercelProduction
+    
+    // LÓGICA DEFINITIVA DE REDIRECIONAMENTO
     let redirectTo: string
     
-    if (isLocalhost) {
-      // Desenvolvimento local
+    if (isLocalDevelopment) {
+      // Desenvolvimento local - usar localhost
       redirectTo = `${currentOrigin}/auth/callback`
     } else {
-      // PRODUÇÃO: Sempre usar a URL de produção configurada
-      // Se não tiver VITE_PRODUCTION_URL, usar o origin atual
-      const baseUrl = productionUrl || currentOrigin
-      redirectTo = `${baseUrl}/auth/callback`
-      
-      // FORÇA ADICIONAL: Se detectarmos que estamos no Vercel, garantir que não use localhost
-      if (isVercel && redirectTo.includes('localhost')) {
+      // PRODUÇÃO - SEMPRE usar URL de produção
+      if (productionUrl) {
+        // Se temos URL de produção configurada, usar ela
+        redirectTo = `${productionUrl}/auth/callback`
+      } else if (isVercelProduction) {
+        // Se estamos no Vercel mas não temos URL configurada, usar origin atual
+        redirectTo = `${currentOrigin}/auth/callback`
+      } else {
+        // Domínio customizado ou outro ambiente
         redirectTo = `${currentOrigin}/auth/callback`
       }
     }
     
-    console.log('🔐 AuthService: Iniciando login com Google')
-    console.log('🌐 AuthService: hostname:', window.location.hostname)
-    console.log('🏠 AuthService: isLocalhost:', isLocalhost)
-    console.log('☁️ AuthService: isVercel:', isVercel)
-    console.log('🔗 AuthService: currentOrigin:', currentOrigin)
-    console.log('🔧 AuthService: VITE_PRODUCTION_URL:', productionUrl)
-    console.log('↩️ AuthService: redirectTo FINAL:', redirectTo)
-    console.log('🌍 AuthService: window.location.href:', window.location.href)
-    
-    // VERIFICAÇÃO FINAL: Garantir que não estamos redirecionando para localhost em produção
-    if (!isLocalhost && redirectTo.includes('localhost')) {
-      console.error('🚨 ERRO: Tentativa de redirecionamento para localhost em produção!')
-      redirectTo = `${currentOrigin}/auth/callback`
-      console.log('🔧 AuthService: redirectTo CORRIGIDO:', redirectTo)
+    // VERIFICAÇÃO DE SEGURANÇA: NUNCA permitir localhost em produção
+    if (!isLocalDevelopment && redirectTo.includes('localhost')) {
+      console.error('🚨 ERRO CRÍTICO: Tentativa de redirecionamento para localhost em produção!')
+      redirectTo = productionUrl ? `${productionUrl}/auth/callback` : `${currentOrigin}/auth/callback`
     }
     
+    // Logs detalhados para debug
+    console.log('🔐 OAuth Google - Configuração:')
+    console.log('  📍 Hostname:', hostname)
+    console.log('  🏠 Local Development:', isLocalDevelopment)
+    console.log('  ☁️ Vercel Production:', isVercelProduction)
+    console.log('  🌐 Custom Domain:', isCustomDomain)
+    console.log('  🔗 Current Origin:', currentOrigin)
+    console.log('  🎯 Production URL (env):', productionUrl)
+    console.log('  ↩️ Redirect URL FINAL:', redirectTo)
+    console.log('  🌍 Full URL:', window.location.href)
+    
+    // Configurar OAuth com URL correta
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -141,7 +149,7 @@ export const authService = {
       }
     })
     
-    console.log('✅ AuthService: Resultado do login Google:', { data, error })
+    console.log('✅ OAuth Result:', { data, error, redirectUsed: redirectTo })
     return { data, error }
   },
 
