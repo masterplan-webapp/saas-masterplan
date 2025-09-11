@@ -90,19 +90,44 @@ export const authService = {
 
   // Login com Google
   async signInWithGoogle() {
-    // Usar sempre a URL atual do ambiente para redirecionamento
-    const redirectTo = `${window.location.origin}/auth/callback`
+    // Detectar ambiente de produção de forma mais robusta
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    const isVercel = window.location.hostname.includes('vercel.app')
+    const currentOrigin = window.location.origin
     
-    console.log('AuthService: Iniciando login com Google, redirectTo:', redirectTo)
+    // Forçar URL de produção se estivermos no Vercel
+    let redirectTo: string
+    if (isVercel) {
+      // Garantir que usamos a URL correta do Vercel
+      redirectTo = `${currentOrigin}/auth/callback`
+    } else if (isLocalhost) {
+      redirectTo = `${currentOrigin}/auth/callback`
+    } else {
+      // Fallback para qualquer outro ambiente
+      redirectTo = `${currentOrigin}/auth/callback`
+    }
+    
+    console.log('🔐 AuthService: Iniciando login com Google')
+    console.log('🌐 AuthService: hostname:', window.location.hostname)
+    console.log('🏠 AuthService: isLocalhost:', isLocalhost)
+    console.log('☁️ AuthService: isVercel:', isVercel)
+    console.log('🔗 AuthService: currentOrigin:', currentOrigin)
+    console.log('↩️ AuthService: redirectTo:', redirectTo)
+    console.log('🔧 AuthService: VITE_PRODUCTION_URL:', import.meta.env.VITE_PRODUCTION_URL)
+    console.log('🌍 AuthService: window.location.href:', window.location.href)
     
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo
+        redirectTo,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent'
+        }
       }
     })
     
-    console.log('AuthService: Resultado do login Google:', { data, error })
+    console.log('✅ AuthService: Resultado do login Google:', { data, error })
     return { data, error }
   },
 

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste OAuth Google - Supabase</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            background-color: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:hover {
+            background-color: #3367d6;
+        }
+        .log {
+            background-color: #000;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .info {
+            background-color: #333;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔐 Teste OAuth Google - Supabase</h1>
+    
+    <div class="container">
+        <h2>Informações do Ambiente</h2>
+        <div class="info" id="envInfo"></div>
+    </div>
+    
+    <div class="container">
+        <h2>Teste de Autenticação</h2>
+        <button onclick="testGoogleLogin()">🚀 Testar Login com Google</button>
+        <button onclick="checkSession()">📋 Verificar Sessão Atual</button>
+        <button onclick="clearLogs()">🧹 Limpar Logs</button>
+    </div>
+    
+    <div class="container">
+        <h2>Logs de Debug</h2>
+        <div class="log" id="logs"></div>
+    </div>
+
+    <script>
+        // Configuração do Supabase
+        const supabaseUrl = 'https://oibdqytxyeauwbsfuxun.supabase.co'
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pYmRxeXR4eWVhdXdic2Z1eHVuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNjM3MjQsImV4cCI6MjA3MjczOTcyNH0.iI1hLY1iLb6dY9IwVrYhjNnpBJ5w4FuInvt8qDizA_U'
+        
+        const { createClient } = supabase
+        const supabaseClient = createClient(supabaseUrl, supabaseKey)
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString()
+            const logElement = document.getElementById('logs')
+            logElement.textContent += `[${timestamp}] ${message}\n`
+            logElement.scrollTop = logElement.scrollHeight
+            console.log(message)
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').textContent = ''
+        }
+        
+        function updateEnvInfo() {
+            const envInfo = document.getElementById('envInfo')
+            const info = {
+                'URL Atual': window.location.href,
+                'Hostname': window.location.hostname,
+                'Origin': window.location.origin,
+                'É Localhost': window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
+                'É Vercel': window.location.hostname.includes('vercel.app'),
+                'User Agent': navigator.userAgent
+            }
+            
+            envInfo.innerHTML = Object.entries(info)
+                .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
+                .join('<br>')
+        }
+        
+        async function testGoogleLogin() {
+            try {
+                log('🔐 Iniciando teste de login com Google...')
+                
+                const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                const isVercel = window.location.hostname.includes('vercel.app')
+                const currentOrigin = window.location.origin
+                const redirectTo = `${currentOrigin}/auth/callback`
+                
+                log(`🌐 Hostname: ${window.location.hostname}`)
+                log(`🏠 É Localhost: ${isLocalhost}`)
+                log(`☁️ É Vercel: ${isVercel}`)
+                log(`🔗 Origin: ${currentOrigin}`)
+                log(`↩️ Redirect URL: ${redirectTo}`)
+                
+                const { data, error } = await supabaseClient.auth.signInWithOAuth({
+                    provider: 'google',
+                    options: {
+                        redirectTo,
+                        queryParams: {
+                            access_type: 'offline',
+                            prompt: 'consent'
+                        }
+                    }
+                })
+                
+                if (error) {
+                    log(`❌ Erro no login: ${error.message}`)
+                    log(`🔍 Detalhes do erro: ${JSON.stringify(error, null, 2)}`)
+                } else {
+                    log(`✅ Login iniciado com sucesso`)
+                    log(`📊 Dados retornados: ${JSON.stringify(data, null, 2)}`)
+                }
+                
+            } catch (error) {
+                log(`💥 Erro inesperado: ${error.message}`)
+                console.error('Erro completo:', error)
+            }
+        }
+        
+        async function checkSession() {
+            try {
+                log('📋 Verificando sessão atual...')
+                
+                const { data: { session }, error } = await supabaseClient.auth.getSession()
+                
+                if (error) {
+                    log(`❌ Erro ao verificar sessão: ${error.message}`)
+                } else if (session) {
+                    log(`✅ Sessão ativa encontrada`)
+                    log(`👤 Usuário: ${session.user.email}`)
+                    log(`🕒 Expira em: ${new Date(session.expires_at * 1000).toLocaleString()}`)
+                } else {
+                    log(`ℹ️ Nenhuma sessão ativa`)
+                }
+                
+            } catch (error) {
+                log(`💥 Erro inesperado: ${error.message}`)
+            }
+        }
+        
+        // Inicializar página
+        document.addEventListener('DOMContentLoaded', function() {
+            updateEnvInfo()
+            log('🚀 Página de teste carregada')
+            log('🔧 Supabase URL: ' + supabaseUrl)
+            
+            // Verificar se estamos na página de callback
+            if (window.location.pathname === '/auth/callback') {
+                log('📍 Detectada página de callback OAuth')
+                checkSession()
+            }
+        })
+        
+        // Escutar mudanças de autenticação
+        supabaseClient.auth.onAuthStateChange((event, session) => {
+            log(`🔄 Mudança de estado de auth: ${event}`)
+            if (session) {
+                log(`👤 Usuário logado: ${session.user.email}`)
+            } else {
+                log(`👤 Usuário deslogado`)
+            }
+        })
+    </script>
+</body>
+</html>
