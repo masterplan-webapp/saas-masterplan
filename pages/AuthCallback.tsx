@@ -18,7 +18,13 @@ export function AuthCallback() {
   }
 
   useEffect(() => {
+    // Logs detalhados para debug do OAuth
     addDebugLog(`Estado inicial - loading: ${loading}, session: ${!!session}, user: ${!!user}`)
+    addDebugLog(`URL atual: ${window.location.href}`)
+    addDebugLog(`Origin: ${window.location.origin}`)
+    addDebugLog(`Hostname: ${window.location.hostname}`)
+    addDebugLog(`Search params: ${window.location.search}`)
+    addDebugLog(`Hash: ${window.location.hash}`)
     
     // Limpar timers anteriores
     if (redirectTimer) {

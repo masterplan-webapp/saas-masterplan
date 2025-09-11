@@ -94,10 +94,17 @@ export const authService = {
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     const isVercel = window.location.hostname.includes('vercel.app')
     const currentOrigin = window.location.origin
+    const productionUrl = import.meta.env.VITE_PRODUCTION_URL
     
     // Forçar URL de produção se estivermos no Vercel
     let redirectTo: string
-    if (isVercel) {
+    if (isLocalhost) {
+      // Desenvolvimento local
+      redirectTo = `${currentOrigin}/auth/callback`
+    } else if (isVercel && productionUrl) {
+      // Produção no Vercel - usar URL de produção configurada
+      redirectTo = `${productionUrl}/auth/callback`
+    } else if (isVercel) {
       // Garantir que usamos a URL correta do Vercel
       redirectTo = `${currentOrigin}/auth/callback`
     } else if (isLocalhost) {
