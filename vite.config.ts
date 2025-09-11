@@ -15,6 +15,20 @@ export default defineConfig(({ mode }) => {
       },
       server: {
         port: 3000
-      }
+      },
+      build: {
+        outDir: 'dist',
+        assetsDir: 'assets',
+        sourcemap: false,
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              vendor: ['react', 'react-dom'],
+              supabase: ['@supabase/supabase-js']
+            }
+          }
+        }
+      },
+      base: '/'
     };
 });
