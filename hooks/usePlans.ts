@@ -153,9 +153,23 @@ export function usePlans() {
       const localPlans = JSON.parse(localStorage.getItem('masterplan_plans') || '[]')
       if (localPlans.length === 0) return
 
-      console.log('Migrating', localPlans.length, 'plans to Supabase...')
+      // First, get existing plans from Supabase to avoid duplicates
+      const { data: existingPlans, error: plansError } = await planService.getUserPlans(user.id)
+      if (plansError) throw plansError
       
-      for (const plan of localPlans) {
+      const existingPlanIds = new Set(existingPlans?.map(p => p.data.id) || [])
+      const plansToMigrate = localPlans.filter((plan: PlanData) => !existingPlanIds.has(plan.id))
+      
+      if (plansToMigrate.length === 0) {
+        console.log('No new plans to migrate')
+        // Clear localStorage since all plans are already in Supabase
+        localStorage.removeItem('masterplan_plans')
+        return
+      }
+
+      console.log('Migrating', plansToMigrate.length, 'plans to Supabase...')
+      
+      for (const plan of plansToMigrate) {
         try {
           const { error: migrationError } = await planService.createPlan(user.id, plan.campaignName || 'Plano sem nome', plan)
           if (migrationError) throw migrationError
@@ -163,6 +177,9 @@ export function usePlans() {
           console.error('Error migrating plan:', plan.id, err)
         }
       }
+      
+      // Clear localStorage after successful migration
+      localStorage.removeItem('masterplan_plans')
       
       // Reload plans from Supabase
       await loadPlans()
