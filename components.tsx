@@ -828,24 +828,28 @@ const MetricCard: React.FC<{ title: string; value: string | number; icon: React.
     const valueStr = String(value);
 
     return (
-        <Card className="flex items-start gap-3 min-w-0 min-h-[140px] p-4">
-            <div className="p-3 bg-blue-900/30 rounded-lg shrink-0">
+        <Card className="flex flex-col items-center text-center min-w-0 min-h-[160px] p-6 space-y-4">
+            {/* Primeira linha: Ícone centralizado */}
+            <div className="p-3 bg-blue-900/30 rounded-lg">
                 <Icon className="w-6 h-6 text-blue-400" />
             </div>
-            <div className="min-w-0 flex-1 flex flex-col justify-center py-2 overflow-hidden">
-                <p className="text-sm text-gray-400 mb-3 truncate">{title}</p>
+            
+            {/* Segunda linha: Título completo */}
+            <div className="w-full">
+                <p className="text-sm text-gray-400 font-medium leading-relaxed">{title}</p>
+            </div>
+            
+            {/* Terceira linha: Métrica */}
+            <div className="w-full flex-1 flex items-center justify-center">
                 <p 
-                    className="font-bold text-gray-100 leading-tight break-all"
+                    className="font-bold text-gray-100 leading-tight"
                     style={{
-                        fontSize: 'clamp(0.65rem, 1.8vw, 1.25rem)',
-                        wordBreak: 'break-all',
-                        overflowWrap: 'break-word',
-                        hyphens: 'auto',
-                        lineHeight: '1.2'
-                    }}
-                    title={valueStr}
+                         fontSize: 'clamp(1rem, 2.5vw, 1.5rem)',
+                         wordBreak: 'keep-all',
+                         lineHeight: '1.2'
+                     }}
                 >
-                    {value}
+                    {valueStr}
                 </p>
             </div>
         </Card>
