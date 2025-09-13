@@ -88,69 +88,101 @@ export const authService = {
     return { data, error }
   },
 
-  // Login com Google
+  // Login com Google - CORREÇÃO DEFINITIVA PARA net::ERR_ABORTED
   async signInWithGoogle() {
-    // SOLUÇÃO DEFINITIVA: Detecção robusta de ambiente
-    const hostname = window.location.hostname
-    const currentOrigin = window.location.origin
-    const productionUrl = import.meta.env.VITE_PRODUCTION_URL
-    
-    // Determinar se estamos em desenvolvimento ou produção
-    const isLocalDevelopment = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')
-    const isVercelProduction = hostname.includes('vercel.app')
-    const isCustomDomain = !isLocalDevelopment && !isVercelProduction
-    
-    // LÓGICA DEFINITIVA DE REDIRECIONAMENTO
-    let redirectTo: string
-    
-    if (isLocalDevelopment) {
-      // Desenvolvimento local - usar localhost
-      redirectTo = `${currentOrigin}/auth/callback`
-    } else {
-      // PRODUÇÃO - SEMPRE usar URL de produção
-      if (productionUrl) {
-        // Se temos URL de produção configurada, usar ela
-        redirectTo = `${productionUrl}/auth/callback`
-      } else if (isVercelProduction) {
-        // Se estamos no Vercel mas não temos URL configurada, usar origin atual
+    try {
+      // DETECÇÃO ROBUSTA DE AMBIENTE
+      const hostname = window.location.hostname
+      const currentOrigin = window.location.origin
+      const productionUrl = import.meta.env.VITE_PRODUCTION_URL
+      
+      // Determinar ambiente com mais precisão
+      const isLocalDevelopment = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')
+      const isVercelProduction = hostname.includes('vercel.app')
+      
+      // CORREÇÃO CRÍTICA: SEMPRE usar URL de produção em produção
+      let redirectTo: string
+      
+      if (isLocalDevelopment) {
+        // Desenvolvimento local
         redirectTo = `${currentOrigin}/auth/callback`
       } else {
-        // Domínio customizado ou outro ambiente
-        redirectTo = `${currentOrigin}/auth/callback`
-      }
-    }
-    
-    // VERIFICAÇÃO DE SEGURANÇA: NUNCA permitir localhost em produção
-    if (!isLocalDevelopment && redirectTo.includes('localhost')) {
-      console.error('🚨 ERRO CRÍTICO: Tentativa de redirecionamento para localhost em produção!')
-      redirectTo = productionUrl ? `${productionUrl}/auth/callback` : `${currentOrigin}/auth/callback`
-    }
-    
-    // Logs detalhados para debug
-    console.log('🔐 OAuth Google - Configuração:')
-    console.log('  📍 Hostname:', hostname)
-    console.log('  🏠 Local Development:', isLocalDevelopment)
-    console.log('  ☁️ Vercel Production:', isVercelProduction)
-    console.log('  🌐 Custom Domain:', isCustomDomain)
-    console.log('  🔗 Current Origin:', currentOrigin)
-    console.log('  🎯 Production URL (env):', productionUrl)
-    console.log('  ↩️ Redirect URL FINAL:', redirectTo)
-    console.log('  🌍 Full URL:', window.location.href)
-    
-    // Configurar OAuth com URL correta
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent'
+        // PRODUÇÃO: FORÇAR uso da URL de produção configurada
+        if (productionUrl && productionUrl.trim() !== '') {
+          redirectTo = `${productionUrl}/auth/callback`
+        } else {
+          // Fallback para origin atual se não tiver URL configurada
+          redirectTo = `${currentOrigin}/auth/callback`
         }
       }
-    })
-    
-    console.log('✅ OAuth Result:', { data, error, redirectUsed: redirectTo })
-    return { data, error }
+      
+      // VERIFICAÇÃO DE SEGURANÇA CRÍTICA
+      if (!isLocalDevelopment && redirectTo.includes('localhost')) {
+        console.error('🚨 ERRO CRÍTICO: Tentativa de redirecionamento para localhost em produção!')
+        console.error('🔧 Forçando correção para URL de produção...')
+        redirectTo = productionUrl || currentOrigin + '/auth/callback'
+      }
+      
+      // Logs detalhados para debug
+      console.group('🔐 OAuth Google - Configuração Detalhada')
+      console.log('📍 Hostname:', hostname)
+      console.log('🏠 Local Development:', isLocalDevelopment)
+      console.log('☁️ Vercel Production:', isVercelProduction)
+      console.log('🔗 Current Origin:', currentOrigin)
+      console.log('🎯 Production URL (env):', productionUrl)
+      console.log('↩️ Redirect URL FINAL:', redirectTo)
+      console.log('🌍 Full URL:', window.location.href)
+      console.log('🔍 User Agent:', navigator.userAgent)
+      console.groupEnd()
+      
+      // CONFIGURAÇÃO OAUTH OTIMIZADA
+      const oauthConfig = {
+        provider: 'google' as const,
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'select_account', // Mudança: usar select_account em vez de consent
+            include_granted_scopes: 'true'
+          },
+          // Adicionar skipBrowserRedirect para debug
+          skipBrowserRedirect: false
+        }
+      }
+      
+      console.log('🚀 Iniciando OAuth com configuração:', oauthConfig)
+      
+      // Executar OAuth
+      const { data, error } = await supabase.auth.signInWithOAuth(oauthConfig)
+      
+      // Log detalhado do resultado
+      console.group('✅ OAuth Result')
+      console.log('Data:', data)
+      console.log('Error:', error)
+      console.log('Redirect usado:', redirectTo)
+      console.log('Timestamp:', new Date().toISOString())
+      console.groupEnd()
+      
+      if (error) {
+        console.error('🚨 Erro no OAuth:', error)
+        // Tentar novamente com configuração simplificada se houver erro
+        if (error.message?.includes('redirect') || error.message?.includes('URL')) {
+          console.log('🔄 Tentando novamente com configuração simplificada...')
+          const fallbackConfig = {
+            provider: 'google' as const,
+            options: {
+              redirectTo: isLocalDevelopment ? `${currentOrigin}/auth/callback` : `${productionUrl}/auth/callback`
+            }
+          }
+          return await supabase.auth.signInWithOAuth(fallbackConfig)
+        }
+      }
+      
+      return { data, error }
+    } catch (error) {
+      console.error('🚨 Erro crítico no signInWithGoogle:', error)
+      return { data: null, error }
+    }
   },
 
   // Logout
