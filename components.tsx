@@ -826,13 +826,13 @@ export const PlanSelectorPage: React.FC<PlanSelectorPageProps> = ({ plans, onSel
 
 const MetricCard: React.FC<{ title: string; value: string | number; icon: React.ElementType, isCurrency?: boolean, isPercentage?: boolean, isReadOnly?: boolean }> = ({ title, value, icon: Icon, isReadOnly=false }) => {
     return (
-        <Card className="flex items-start gap-4 min-w-0 min-h-[120px]">
+        <Card className="flex items-start gap-4 min-w-0 min-h-[120px] overflow-hidden">
             <div className="p-3 bg-blue-900/30 rounded-lg shrink-0">
                 <Icon className="w-6 h-6 text-blue-400" />
             </div>
             <div className="min-w-0 flex-1 flex flex-col justify-center">
                 <p className="text-sm text-gray-400 mb-2">{title}</p>
-                <p className="text-base sm:text-lg lg:text-xl xl:text-2xl 2xl:text-3xl font-bold text-gray-100 break-all leading-tight">{value}</p>
+                <p className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl font-bold text-gray-100 whitespace-nowrap overflow-hidden text-ellipsis leading-tight">{value}</p>
             </div>
         </Card>
     );
