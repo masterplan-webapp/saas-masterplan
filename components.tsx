@@ -825,14 +825,23 @@ export const PlanSelectorPage: React.FC<PlanSelectorPageProps> = ({ plans, onSel
 };
 
 const MetricCard: React.FC<{ title: string; value: string | number; icon: React.ElementType, isCurrency?: boolean, isPercentage?: boolean, isReadOnly?: boolean }> = ({ title, value, icon: Icon, isReadOnly=false }) => {
+    // Determine font size based on value length for better display
+    const valueStr = String(value);
+    const getFontSizeClass = () => {
+        if (valueStr.length <= 8) return 'text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl';
+        if (valueStr.length <= 12) return 'text-xs sm:text-sm md:text-sm lg:text-base xl:text-lg';
+        if (valueStr.length <= 16) return 'text-xs sm:text-xs md:text-sm lg:text-sm xl:text-base';
+        return 'text-xs sm:text-xs md:text-xs lg:text-xs xl:text-sm';
+    };
+
     return (
-        <Card className="flex items-start gap-4 min-w-0 min-h-[120px] overflow-hidden">
+        <Card className="flex items-start gap-4 min-w-0 min-h-[120px]">
             <div className="p-3 bg-blue-900/30 rounded-lg shrink-0">
                 <Icon className="w-6 h-6 text-blue-400" />
             </div>
             <div className="min-w-0 flex-1 flex flex-col justify-center">
                 <p className="text-sm text-gray-400 mb-2">{title}</p>
-                <p className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl font-bold text-gray-100 whitespace-nowrap overflow-hidden text-ellipsis leading-tight">{value}</p>
+                <p className={`${getFontSizeClass()} font-bold text-gray-100 whitespace-nowrap overflow-hidden text-ellipsis leading-tight`} title={valueStr}>{value}</p>
             </div>
         </Card>
     );

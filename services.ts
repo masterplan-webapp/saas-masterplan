@@ -23,7 +23,9 @@ export const formatPercentage = (value?: number | string): string => {
 
 export const formatNumber = (value?: number | string): string => {
     const numberValue = Number(value) || 0;
-    return new Intl.NumberFormat('pt-BR').format(Math.round(numberValue));
+    // Use toFixed(0) instead of Math.round() for better precision with large numbers
+    const roundedValue = Math.floor(numberValue + 0.5);
+    return new Intl.NumberFormat('pt-BR').format(roundedValue);
 };
 
 export const sortMonthKeys = (a: string, b: string): number => {
@@ -135,6 +137,9 @@ export const recalculateCampaignMetrics = (campaign: Partial<Campaign>): Campaig
     const visitas = cliques * connectRate;
     const orcamentoDiario = budget / 30.4;
 
+    // Use consistent rounding logic for better precision
+    const roundValue = (value: number) => Math.floor(value + 0.5);
+
     return {
         ...newCampaign,
         budget,
@@ -143,11 +148,11 @@ export const recalculateCampaignMetrics = (campaign: Partial<Campaign>): Campaig
         ctr: ctr * 100,
         taxaConversao: taxaConversao * 100,
         connectRate: connectRate * 100,
-        impressoes: Math.round(impressoes),
-        cliques: Math.round(cliques),
-        conversoes: Math.round(conversoes),
+        impressoes: roundValue(impressoes),
+        cliques: roundValue(cliques),
+        conversoes: roundValue(conversoes),
         cpa,
-        visitas: Math.round(visitas),
+        visitas: roundValue(visitas),
         orcamentoDiario,
     } as Campaign;
 };
